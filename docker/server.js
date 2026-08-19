@@ -120,8 +120,6 @@ function serveIndex(req, res) {
 }
 
 function serveAPI(req, res) {
-  const url = new URL(req.url, `http://${HOST}:${PORT}`)
-
   res.writeHead(200, { 'Content-Type': 'application/json' })
   res.end(
     JSON.stringify({
