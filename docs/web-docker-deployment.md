@@ -43,6 +43,7 @@ npm run build:all
 
 # Start the web server
 node docker/server.js
+```
 
 ## Configuration
 
