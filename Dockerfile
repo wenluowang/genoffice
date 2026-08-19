@@ -8,11 +8,10 @@ WORKDIR /app
 # Install Rust toolchain for xlsx-engine sidecar
 RUN apk add --no-cache rust cargo git python3 make g++
 
-# Copy package files
-COPY package*.json ./
-COPY package-lock.json ./
-COPY apps/*/package.json apps/
-COPY packages/*/package.json packages/
+# Copy package manifests first (workspaces need their package.json paths preserved)
+COPY package.json package-lock.json ./
+COPY apps ./apps
+COPY packages ./packages
 
 # Install dependencies
 RUN npm ci
