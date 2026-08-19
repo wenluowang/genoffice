@@ -168,17 +168,40 @@ HOST=0.0.0.0
 # GENSPARK_API_URL=https://api.genspark.ai
 ```
 
-### Hugging Face Spaces
+### Hugging Face Spaces (Docker Image Deployment)
 
-GenOffice can be deployed to Hugging Face Spaces using GitHub Actions:
+GenOffice supports deployment to Hugging Face Spaces by building and pushing Docker images to the Hugging Face container registry. The GitHub Actions workflow automatically handles this process.
 
-1. Create a new Space on [Hugging Face](https://huggingface.co/spaces)
-2. Add the following secrets to your GitHub repository:
-   - `HF_TOKEN`: Your Hugging Face API token
-   - `HF_SPACE_ID`: Your Space ID (e.g., `username/genoffice`)
-3. Push to the `main` branch to trigger automatic deployment
+#### Setup GitHub Secrets
 
-See [`docs/web-docker-deployment.md`](docs/web-docker-deployment.md) for detailed documentation.
+Add the following secrets to your GitHub repository:
+- `HF_USERNAME`: Your Hugging Face username
+- `HF_TOKEN`: Your Hugging Face API token (with write permissions)
+
+#### Automatic Deployment
+
+The workflow (`.github/workflows/deploy-hf-space.yml`) triggers on push to `main` branch and:
+1. Builds the Docker image
+2. Pushes it to `huggingface.co/YOUR_USERNAME/genoffice`
+3. Tags with branch name, SHA, and `latest`
+
+#### Manual Deployment
+
+```bash
+# Using the deployment script
+cd docker
+./deploy-to-hf.sh
+
+# Or manually
+docker build -f HF_SPACE_Dockerfile -t genoffice ..
+docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest
+docker login huggingface.co
+docker push huggingface.co/YOUR_USERNAME/genoffice:latest
+```
+
+Then configure your Hugging Face Space to use the pushed Docker image.
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for comprehensive deployment documentation including troubleshooting and production considerations.
 
 ## Architecture notes (docx round trip)
 

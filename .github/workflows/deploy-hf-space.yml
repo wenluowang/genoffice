@@ -1,4 +1,4 @@
-name: Deploy to Hugging Face Spaces
+name: Deploy Docker to Hugging Face Spaces
 
 on:
   push:
@@ -9,166 +9,89 @@ on:
       - 'docker/**'
       - 'Dockerfile'
       - 'docker-compose.yml'
+      - '.dockerignore'
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: 'pages'
-  cancel-in-progress: false
-
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-and-push-docker:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Hugging Face Registry
+        uses: docker/login-action@v3
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+          registry: huggingface.co
+          username: ${{ secrets.HF_USERNAME }}
+          password: ${{ secrets.HF_TOKEN }}
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          toolchain: stable
-
-      - name: Cache cargo (xlsx-sidecar)
-        uses: Swatinem/rust-cache@v2
+          images: huggingface.co/${{ secrets.HF_USERNAME }}/genoffice
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
-          workspaces: apps/sheets/native/xlsx-engine
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build applications
-        run: npm run build:all
-
-      - name: Build web assets
+          context: .
+          file: ./docker/HF_SPACE_Dockerfile
+          push: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+      
+      - name: Display deployment info
+        if: ${{ secrets.HF_TOKEN == '' || secrets.HF_USERNAME == '' }}
         run: |
-          mkdir -p hf-space/static
-          cp -r apps/shell/out/renderer/* hf-space/static/ 2>/dev/null || true
-          cp docker/server.js hf-space/
-
-      - name: Create Hugging Face Space files
+          echo "⚠️ HF_TOKEN or HF_USERNAME not set. Skipping push."
+          echo ""
+          echo "To enable deployment to Hugging Face Spaces:"
+          echo "1. Go to your repository Settings > Secrets and variables > Actions"
+          echo "2. Add the following secrets:"
+          echo "   - HF_USERNAME: Your Hugging Face username"
+          echo "   - HF_TOKEN: Your Hugging Face API token (with write permissions)"
+          echo ""
+          echo "You can still build the image locally with:"
+          echo "  docker build -f docker/HF_SPACE_Dockerfile -t genoffice ."
+          echo ""
+          echo "Manual push command:"
+          echo "  docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest"
+          echo "  docker login huggingface.co"
+          echo "  docker push huggingface.co/YOUR_USERNAME/genoffice:latest"
+      
+      - name: Deployment summary
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
         run: |
-          # Create README for HF Space
-          cat > hf-space/README.md << 'EOF'
-          ---
-          title: GenOffice Web
-          emoji: 🚀
-          colorFrom: blue
-          colorTo: purple
-          sdk: docker
-          pinned: false
-          license: apache-2.0
-          ---
-
-          # GenOffice Web Preview
-
-          The world's first full-featured open-source AI Office suite, now available on the web!
-
-          ## Features
-
-          - 📄 **Docs** - Word processor with .docx support
-          - 📊 **Sheets** - Spreadsheet editor with .xlsx support
-          - 📽️ **Slides** - Presentation editor with .pptx support
-          - 📕 **PDF** - PDF viewer and editor
-          - 📝 **Markdown** - Markdown editor
-
-          ## About
-
-          GenOffice is a free, open-source alternative to Microsoft Office for macOS, Windows, and Linux, 
-          built around AI editing as a first-class workflow.
-
-          [GitHub Repository](https://github.com/genspark-ai/genoffice)
-
-          ## License
-
-          Apache-2.0
-          EOF
-
-          # Create Dockerfile for HF Space
-          cat > hf-space/Dockerfile << 'EOF'
-          FROM node:22-alpine
-
-          WORKDIR /app
-
-          RUN apk add --no-cache dumb-init
-
-          COPY package*.json ./
-          COPY apps/*/package.json apps/
-          COPY packages/*/package.json packages/
-
-          RUN npm ci --production
-
-          COPY apps apps
-          COPY packages packages
-          COPY server.js ./
-
-          EXPOSE 7860
-
-          ENV PORT=7860
-          ENV HOST=0.0.0.0
-
-          USER node
-
-          CMD ["node", "server.js"]
-          EOF
-
-          # Copy necessary files
-          cp package*.json hf-space/
-          cp -r apps hf-space/
-          cp -r packages hf-space/
-          cp docker/server.js hf-space/
-
-      - name: Configure Git for HF Space
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Deploy to Hugging Face Spaces
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
-        run: |
-          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_ID" ]; then
-            echo "⚠️ HF_TOKEN or HF_SPACE_ID not set. Skipping deployment."
-            echo "To enable deployment, set these secrets in your repository:"
-            echo "  - HF_TOKEN: Your Hugging Face API token"
-            echo "  - HF_SPACE_ID: Your Hugging Face Space ID (e.g., username/space-name)"
-            exit 0
-          fi
-
-          cd hf-space
-
-          # Initialize git repo if not already
-          if [ ! -d ".git" ]; then
-            git init
-            git checkout -b main
-          fi
-
-          HF_USERNAME="${HF_SPACE_ID%%/*}"
-          HF_REMOTE_URL="https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/$HF_SPACE_ID"
-          git remote add hf "$HF_REMOTE_URL" || git remote set-url hf "$HF_REMOTE_URL"
-          git add .
-          git commit -m "Deploy from GitHub Actions - ${{ github.sha }}" || exit 0
-          git push -f hf main
-
-          echo "✅ Deployed to Hugging Face Space: $HF_SPACE_ID"
+          echo "✅ Docker image built and pushed successfully!"
+          echo ""
+          echo "Image details:"
+          echo "  Repository: huggingface.co/${{ secrets.HF_USERNAME }}/genoffice"
+          echo "  Tags: ${{ steps.meta.outputs.tags }}"
+          echo ""
+          echo "Next steps:"
+          echo "1. Go to your Hugging Face Space: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/genoffice"
+          echo "2. Configure the Space to use the Docker image"
+          echo "3. Set environment variables if needed"
+          echo ""
+          echo "Or run locally:"
+          echo "  docker pull huggingface.co/${{ secrets.HF_USERNAME }}/genoffice:latest"
+          echo "  docker run -p 7860:7860 huggingface.co/${{ secrets.HF_USERNAME }}/genoffice:latest"
