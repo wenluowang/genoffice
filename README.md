@@ -193,7 +193,7 @@ cd docker
 ./deploy-to-hf.sh
 
 # Or manually
-docker build -t genoffice .
+docker build -f HF_SPACE_Dockerfile -t genoffice ..
 docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest
 docker login huggingface.co
 docker push huggingface.co/YOUR_USERNAME/genoffice:latest

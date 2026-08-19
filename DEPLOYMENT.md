@@ -137,7 +137,7 @@ If you prefer manual deployment:
 
 ```bash
 # Build the image
-docker build -t genoffice .
+docker build -f docker/HF_SPACE_Dockerfile -t genoffice .
 
 # Tag for Hugging Face
 docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest

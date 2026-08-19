@@ -11,8 +11,8 @@ RUN apk add --no-cache rust cargo git python3 make g++
 # Copy package files
 COPY package*.json ./
 COPY package-lock.json ./
-COPY apps/*/package.json apps/
-COPY packages/*/package.json packages/
+COPY apps ./apps
+COPY packages ./packages
 
 # Install dependencies
 RUN npm ci

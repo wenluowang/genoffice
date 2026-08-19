@@ -45,7 +45,7 @@ echo "   Image: ${IMAGE_NAME}:${TAG}"
 echo ""
 
 # Build the Docker image
-docker build -t "${IMAGE_NAME}:${TAG}" .
+docker build -f HF_SPACE_Dockerfile -t "${IMAGE_NAME}:${TAG}" ..
 
 echo ""
 echo -e "${GREEN}✅ Docker image built successfully${NC}"
