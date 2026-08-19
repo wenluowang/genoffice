@@ -7,6 +7,7 @@ This document describes the web version and Docker deployment setup for GenOffic
 ## Architecture
 
 The web version adapts the Electron-based desktop applications to run in a browser environment by:
+
 - Replacing Electron-specific APIs with web-compatible alternatives
 - Using a Node.js backend for file system operations
 - Serving the renderer processes through a web server
@@ -48,13 +49,13 @@ npm run web:start
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `HOST` | Server host | `0.0.0.0` |
-| `GENSPARK_API_URL` | Genspark API endpoint | (required for AI features) |
-| `ALLOW_FILE_UPLOAD` | Enable file upload | `true` |
-| `MAX_FILE_SIZE` | Maximum file size (MB) | `50` |
+| Variable            | Description            | Default                    |
+| ------------------- | ---------------------- | -------------------------- |
+| `PORT`              | Server port            | `3000`                     |
+| `HOST`              | Server host            | `0.0.0.0`                  |
+| `GENSPARK_API_URL`  | Genspark API endpoint  | (required for AI features) |
+| `ALLOW_FILE_UPLOAD` | Enable file upload     | `true`                     |
+| `MAX_FILE_SIZE`     | Maximum file size (MB) | `50`                       |
 
 ### Docker Environment
 
@@ -71,7 +72,7 @@ HOST=0.0.0.0
 ### Supported Applications (Web)
 
 - **GenOffice Docs** - Word processor with `.docx` support
-- **GenOffice Sheets** - Spreadsheet editor with `.xlsx` support  
+- **GenOffice Sheets** - Spreadsheet editor with `.xlsx` support
 - **GenOffice Slides** - Presentation editor with `.pptx` support
 - **GenOffice PDF** - PDF viewer and editor
 - **GenOffice Markdown** - Markdown editor
@@ -86,6 +87,7 @@ HOST=0.0.0.0
 ## File Upload/Download
 
 The web version supports:
+
 - Drag and drop file upload
 - File picker dialog
 - Automatic download of edited files
@@ -126,17 +128,17 @@ spec:
         app: genoffice
     spec:
       containers:
-      - name: genoffice
-        image: genoffice:production
-        ports:
-        - containerPort: 3000
-        env:
-        - name: PORT
-          value: "3000"
-        resources:
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
+        - name: genoffice
+          image: genoffice:production
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: '3000'
+          resources:
+            limits:
+              memory: '1Gi'
+              cpu: '1000m'
 ---
 apiVersion: v1
 kind: Service
@@ -146,8 +148,8 @@ spec:
   selector:
     app: genoffice
   ports:
-  - port: 80
-    targetPort: 3000
+    - port: 80
+      targetPort: 3000
   type: LoadBalancer
 ```
 

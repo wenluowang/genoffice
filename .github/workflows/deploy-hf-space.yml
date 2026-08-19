@@ -20,7 +20,7 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: false
 
 jobs:
@@ -30,42 +30,42 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: package-lock.json
-      
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      
+
       - name: Cache cargo (xlsx-sidecar)
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/sheets/native/xlsx-engine
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build applications
         run: npm run build:all
-      
+
       - name: Build web assets
         run: |
           mkdir -p hf-space/static
           cp -r apps/shell/out/renderer/* hf-space/static/ 2>/dev/null || true
           cp docker/server.js hf-space/
-      
+
       - name: Create Hugging Face Space files
         run: |
           # Create README for HF Space
@@ -79,70 +79,70 @@ jobs:
           pinned: false
           license: apache-2.0
           ---
-          
+
           # GenOffice Web Preview
-          
+
           The world's first full-featured open-source AI Office suite, now available on the web!
-          
+
           ## Features
-          
+
           - 📄 **Docs** - Word processor with .docx support
           - 📊 **Sheets** - Spreadsheet editor with .xlsx support
           - 📽️ **Slides** - Presentation editor with .pptx support
           - 📕 **PDF** - PDF viewer and editor
           - 📝 **Markdown** - Markdown editor
-          
+
           ## About
-          
+
           GenOffice is a free, open-source alternative to Microsoft Office for macOS, Windows, and Linux, 
           built around AI editing as a first-class workflow.
-          
+
           [GitHub Repository](https://github.com/genspark-ai/genoffice)
-          
+
           ## License
-          
+
           Apache-2.0
           EOF
-          
+
           # Create Dockerfile for HF Space
           cat > hf-space/Dockerfile << 'EOF'
           FROM node:22-alpine
-          
+
           WORKDIR /app
-          
+
           RUN apk add --no-cache dumb-init
-          
+
           COPY package*.json ./
           COPY apps/*/package.json apps/
           COPY packages/*/package.json packages/
-          
+
           RUN npm ci --production
-          
+
           COPY apps apps
           COPY packages packages
           COPY server.js ./
-          
+
           EXPOSE 7860
-          
+
           ENV PORT=7860
           ENV HOST=0.0.0.0
-          
+
           USER node
-          
+
           CMD ["node", "server.js"]
           EOF
-          
+
           # Copy necessary files
           cp package*.json hf-space/
           cp -r apps hf-space/
           cp -r packages hf-space/
           cp docker/server.js hf-space/
-      
+
       - name: Configure Git for HF Space
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-      
+
       - name: Deploy to Hugging Face Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -155,18 +155,18 @@ jobs:
             echo "  - HF_SPACE_ID: Your Hugging Face Space ID (e.g., username/space-name)"
             exit 0
           fi
-          
+
           cd hf-space
-          
+
           # Initialize git repo if not already
           if [ ! -d ".git" ]; then
             git init
             git checkout -b main
           fi
-          
+
           git remote add hf https://huggingface.co/spaces/$HF_SPACE_ID || true
           git add .
           git commit -m "Deploy from GitHub Actions - ${{ github.sha }}" || exit 0
           git push -f hf main
-          
+
           echo "✅ Deployed to Hugging Face Space: $HF_SPACE_ID"
