@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  genoffice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: genoffice
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      # - GENSPARK_API_URL=https://api.genspark.ai
+    volumes:
+      # Optional: persist user data
+      - genoffice-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Optional: Redis for session management (future use)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: genoffice-redis
+  #   volumes:
+  #     - redis-data:/data
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+
+volumes:
+  genoffice-data:
+    driver: local
+  # redis-data:
+  #   driver: local
