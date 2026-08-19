@@ -141,6 +141,45 @@ automatically.
 Local UI/e2e driver scripts (Playwright + Electron, for local acceptance, not
 committed by default) live in [`scripts/drivers/`](scripts/drivers/README.md).
 
+## Web & Docker Deployment
+
+GenOffice can be deployed as a web application using Docker:
+
+### Quick Start
+
+```bash
+# Build and run with Docker
+docker build -t genoffice:latest .
+docker run -d -p 3000:3000 --name genoffice genoffice:latest
+
+# Or use Docker Compose
+docker-compose up -d
+```
+
+Access the application at `http://localhost:3000`.
+
+### Configuration
+
+Create a `.env` file to configure environment variables:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+# GENSPARK_API_URL=https://api.genspark.ai
+```
+
+### Hugging Face Spaces
+
+GenOffice can be deployed to Hugging Face Spaces using GitHub Actions:
+
+1. Create a new Space on [Hugging Face](https://huggingface.co/spaces)
+2. Add the following secrets to your GitHub repository:
+   - `HF_TOKEN`: Your Hugging Face API token
+   - `HF_SPACE_ID`: Your Space ID (e.g., `username/genoffice`)
+3. Push to the `main` branch to trigger automatic deployment
+
+See [`docs/web-docker-deployment.md`](docs/web-docker-deployment.md) for detailed documentation.
+
 ## Architecture notes (docx round trip)
 
 ```
