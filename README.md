@@ -141,6 +141,68 @@ automatically.
 Local UI/e2e driver scripts (Playwright + Electron, for local acceptance, not
 committed by default) live in [`scripts/drivers/`](scripts/drivers/README.md).
 
+## Web & Docker Deployment
+
+GenOffice can be deployed as a web application using Docker:
+
+### Quick Start
+
+```bash
+# Build and run with Docker
+docker build -t genoffice:latest .
+docker run -d -p 3000:3000 --name genoffice genoffice:latest
+
+# Or use Docker Compose
+docker-compose up -d
+```
+
+Access the application at `http://localhost:3000`.
+
+### Configuration
+
+Create a `.env` file to configure environment variables:
+
+```env
+PORT=3000
+HOST=0.0.0.0
+# GENSPARK_API_URL=https://api.genspark.ai
+```
+
+### Hugging Face Spaces (Docker Image Deployment)
+
+GenOffice supports deployment to Hugging Face Spaces by building and pushing Docker images to the Hugging Face container registry. The GitHub Actions workflow automatically handles this process.
+
+#### Setup GitHub Secrets
+
+Add the following secrets to your GitHub repository:
+- `HF_USERNAME`: Your Hugging Face username
+- `HF_TOKEN`: Your Hugging Face API token (with write permissions)
+
+#### Automatic Deployment
+
+The workflow (`.github/workflows/deploy-hf-space.yml`) triggers on push to `main` branch and:
+1. Builds the Docker image
+2. Pushes it to `huggingface.co/YOUR_USERNAME/genoffice`
+3. Tags with branch name, SHA, and `latest`
+
+#### Manual Deployment
+
+```bash
+# Using the deployment script
+cd docker
+./deploy-to-hf.sh
+
+# Or manually
+docker build -t genoffice .
+docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest
+docker login huggingface.co
+docker push huggingface.co/YOUR_USERNAME/genoffice:latest
+```
+
+Then configure your Hugging Face Space to use the pushed Docker image.
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for comprehensive deployment documentation including troubleshooting and production considerations.
+
 ## Architecture notes (docx round trip)
 
 ```

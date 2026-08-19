@@ -1,0 +1,97 @@
+name: Deploy Docker to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'docker/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.dockerignore'
+  workflow_dispatch:
+
+jobs:
+  build-and-push-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Hugging Face Registry
+        uses: docker/login-action@v3
+        with:
+          registry: huggingface.co
+          username: ${{ secrets.HF_USERNAME }}
+          password: ${{ secrets.HF_TOKEN }}
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: huggingface.co/${{ secrets.HF_USERNAME }}/genoffice
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+      
+      - name: Display deployment info
+        if: ${{ secrets.HF_TOKEN == '' || secrets.HF_USERNAME == '' }}
+        run: |
+          echo "⚠️ HF_TOKEN or HF_USERNAME not set. Skipping push."
+          echo ""
+          echo "To enable deployment to Hugging Face Spaces:"
+          echo "1. Go to your repository Settings > Secrets and variables > Actions"
+          echo "2. Add the following secrets:"
+          echo "   - HF_USERNAME: Your Hugging Face username"
+          echo "   - HF_TOKEN: Your Hugging Face API token (with write permissions)"
+          echo ""
+          echo "You can still build the image locally with:"
+          echo "  docker build -t genoffice ."
+          echo ""
+          echo "Manual push command:"
+          echo "  docker tag genoffice huggingface.co/YOUR_USERNAME/genoffice:latest"
+          echo "  docker login huggingface.co"
+          echo "  docker push huggingface.co/YOUR_USERNAME/genoffice:latest"
+      
+      - name: Deployment summary
+        if: ${{ secrets.HF_TOKEN != '' && secrets.HF_USERNAME != '' }}
+        run: |
+          echo "✅ Docker image built and pushed successfully!"
+          echo ""
+          echo "Image details:"
+          echo "  Repository: huggingface.co/${{ secrets.HF_USERNAME }}/genoffice"
+          echo "  Tags: ${{ steps.meta.outputs.tags }}"
+          echo ""
+          echo "Next steps:"
+          echo "1. Go to your Hugging Face Space: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/genoffice"
+          echo "2. Configure the Space to use the Docker image"
+          echo "3. Set environment variables if needed"
+          echo ""
+          echo "Or run locally:"
+          echo "  docker pull huggingface.co/${{ secrets.HF_USERNAME }}/genoffice:latest"
+          echo "  docker run -p 3000:3000 huggingface.co/${{ secrets.HF_USERNAME }}/genoffice:latest"
